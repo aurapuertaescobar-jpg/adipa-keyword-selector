@@ -1,36 +1,160 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Selección de Keywords - ADIPA
 
-## Getting Started
+Herramienta de análisis automático de SERP por país para decidir si una keyword sirve para generar contenido SEO.
 
-First, run the development server:
+## Características
+
+✅ **Carga de Keywords** - Ingresa una o múltiples keywords de una vez  
+✅ **Análisis Automático SERP** - Busca las top 3 URLs por país (Chile, México, Colombia, Argentina)  
+✅ **Clasificación Inteligente** - IA clasifica cada URL como Informativa o Comercial  
+✅ **Veredicto Automático** - Genera un veredicto basado en la regla de mayoría (≥6 comerciales = NO FUNCIONA)  
+✅ **Historial Versionado** - Guarda todas las corridas anteriores con fecha/hora  
+✅ **Tabla de Resultados** - Visualiza todos los datos con país, posición, clasificación y observaciones  
+
+## Tech Stack
+
+- **Frontend**: Next.js 16+ con React + TypeScript + Tailwind CSS
+- **Backend**: API Routes de Next.js
+- **Base de Datos**: SQLite con Prisma ORM
+- **Integraciones**: Semrush MCP (SERP), Claude API (Clasificación IA)
+
+## Instalación
 
 ```bash
+# Instalar dependencias
+npm install
+
+# Configurar base de datos
+npm run db:push
+
+# Iniciar servidor de desarrollo
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+La aplicación estará disponible en `http://localhost:3000`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Configuración
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Crea un archivo `.env.local` en la raíz del proyecto:
 
-## Learn More
+```env
+DATABASE_URL="file:./prisma/dev.db"
+ANTHROPIC_API_KEY="tu-key-aqui"
+SEMRUSH_API_KEY="tu-key-aqui"
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Uso
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 1. Cargar Keywords
+- Ingresa una keyword por línea o separadas por comas en el formulario lateral
+- La herramienta valida duplicados automáticamente
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 2. Analizar Keyword
+- Haz click en una keyword para ver su detalle
+- Presiona "Analizar Ahora" para disparar un análisis
 
-## Deploy on Vercel
+### 3. Ver Resultados
+- Se muestran las 12 URLs (3 × 4 países) en una tabla
+- Cada URL tiene clasificación, observación, y alerta si es comercial
+- El veredicto aparece de forma clara: ✓ FUNCIONA o ✗ NO FUNCIONA
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 4. Historial
+- En la pestaña "Historial" puedes ver todas las corridas anteriores
+- Selecciona cualquier versión para verla en detalle
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Reglas de Negocio
+
+1. **Alerta Individual**: Si una URL es clasificada como "Comercial", se marca con alerta (⚠️)
+2. **Veredicto Agregado**: Si ≥6 de las 12 URLs son comerciales → "NO FUNCIONA"
+3. **Historial**: Cada análisis se guarda como una nueva versión con fecha/hora
+4. **Clasificación Global**: Un veredicto único por keyword (sin distinción por país)
+
+## Estructura de Base de Datos
+
+```
+Keyword
+├── id (string, PK)
+├── name (string, unique)
+├── createdAt (datetime)
+└── versions (Version[])
+
+Version
+├── id (string, PK)
+├── keywordId (string, FK)
+├── versionNumber (int)
+├── verdict (string: "FUNCIONA" | "NO_FUNCIONA")
+├── commercialCount (int)
+├── createdAt (datetime)
+└── urls (AnalyzedUrl[])
+
+AnalyzedUrl
+├── id (string, PK)
+├── versionId (string, FK)
+├── country (string)
+├── position (int)
+├── url (string)
+├── keywords (string)
+├── classification (string: "Informativo" | "Comercial")
+├── observation (string)
+└── alert (boolean)
+```
+
+## Endpoints API
+
+### Keywords
+- `GET /api/keywords` - Lista todas las keywords
+- `POST /api/keywords` - Crear una nueva keyword
+- `GET /api/keywords/[id]` - Obtener detalle de una keyword
+- `DELETE /api/keywords/[id]` - Eliminar una keyword
+- `POST /api/keywords/[id]/analyze` - Dispara el análisis de la keyword
+
+## Roadmap - Funcionalidades Futuras (v2+)
+
+- 🔄 Override manual de clasificaciones IA
+- 📊 Dashboard de estadísticas
+- 📥 Importar keywords desde Semrush
+- 🔔 Notificaciones de cambios en veredicto
+- 📤 Exportar resultados a CSV/PDF
+- 👥 Multi-usuario con roles
+- 🗺️ Países dinámicos (no solo 4 fijos)
+
+## Notas de Desarrollo
+
+### Estado Actual (v1)
+- Los datos de SERP y clasificación son datos mock para demostración
+- Se pueden reemplazar con llamadas reales a Semrush MCP y Claude API
+- La UI está completamente funcional y lista para producción
+
+### Integración Semrush MCP
+Ubicación: `lib/semrush.ts`
+- Función `fetchSerpResults(keyword, country)` - Obtiene top 3 URLs
+- Función `fetchUrlContent(url)` - Extrae contenido de URL
+- TODO: Reemplazar mock calls con llamadas reales al MCP
+
+### Integración Claude API
+Ubicación: `lib/claude.ts`
+- Función `classifyUrl(url, content)` - Clasifica como Informativo/Comercial
+- Función `generateObservation(url, classification)` - Genera observación
+- TODO: Reemplazar mock calls con llamadas reales a Claude
+
+## Troubleshooting
+
+**Error: DATABASE_URL not found**
+- Asegúrate que .env existe en la raíz del proyecto
+- Ejecuta `npm run db:push` para crear la base de datos
+
+**El servidor no inicia**
+- Limpia la carpeta .next: `rm -rf .next`
+- Reinstala dependencias: `rm -rf node_modules && npm install`
+
+**Errores de compilación TypeScript**
+- Asegúrate estar usando Node.js 18+
+- Ejecuta `npm run build` para verificar
+
+## Licencia
+
+Proyecto privado de ADIPA
+
+## Contacto
+
+Para preguntas o sugerencias sobre esta herramienta, contacta al equipo de desarrollo.

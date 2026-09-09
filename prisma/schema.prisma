@@ -1,0 +1,59 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Keyword {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versions Version[]
+
+  @@index([createdAt])
+}
+
+model Version {
+  id        String   @id @default(cuid())
+  keywordId String
+  keyword   Keyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  versionNumber Int
+  createdAt     DateTime @default(now())
+
+  verdict       String   // "FUNCIONA" | "NO_FUNCIONA"
+  commercialCount Int
+
+  urls          AnalyzedUrl[]
+
+  @@unique([keywordId, versionNumber])
+  @@index([keywordId])
+  @@index([createdAt])
+}
+
+model AnalyzedUrl {
+  id        String   @id @default(cuid())
+  versionId String
+  version   Version  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  country   String   // "Chile", "México", "Colombia", "Argentina"
+  position  Int
+  url       String
+  keywords  String   // Keywords que posiciona (text from page)
+  classification String // "Informativo" | "Comercial"
+  observation String // Observación libre generada por IA
+  alert     Boolean @default(false) // true si es comercial
+
+  createdAt DateTime @default(now())
+
+  @@index([versionId])
+  @@index([country])
+}
