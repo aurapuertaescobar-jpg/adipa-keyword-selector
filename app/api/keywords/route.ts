@@ -1,21 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { getKeywords, createKeyword } from "@/lib/db";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const keywords = await prisma.keyword.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        versions: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          include: {
-            urls: true,
-          },
-        },
-      },
-    });
-
+    const keywords = await getKeywords();
     return NextResponse.json(keywords);
   } catch (error) {
     console.error("Error fetching keywords:", error);
@@ -29,37 +17,24 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name } = body;
+    const { keywords } = body;
 
-    if (!name || typeof name !== "string" || name.trim() === "") {
+    if (!keywords || !Array.isArray(keywords)) {
       return NextResponse.json(
-        { error: "Keyword name is required" },
+        { error: "keywords array is required" },
         { status: 400 }
       );
     }
 
-    const existingKeyword = await prisma.keyword.findUnique({
-      where: { name: name.trim() },
-    });
+    const created = await Promise.all(
+      keywords.map((name: string) => createKeyword(name.trim()))
+    );
 
-    if (existingKeyword) {
-      return NextResponse.json(
-        { error: "Keyword already exists" },
-        { status: 400 }
-      );
-    }
-
-    const keyword = await prisma.keyword.create({
-      data: {
-        name: name.trim(),
-      },
-    });
-
-    return NextResponse.json(keyword, { status: 201 });
+    return NextResponse.json(created, { status: 201 });
   } catch (error) {
-    console.error("Error creating keyword:", error);
+    console.error("Error creating keywords:", error);
     return NextResponse.json(
-      { error: "Failed to create keyword" },
+      { error: "Failed to create keywords" },
       { status: 500 }
     );
   }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { getKeyword, getVersions, createVersion } from "@/lib/db";
 import { fetchSerpResults, fetchUrlContent, type PageMetadata } from "@/lib/semrush";
 import { classifyUrl } from "@/lib/claude";
 
@@ -10,43 +10,19 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const resolvedParams = await params;
-    const keyword = await prisma.keyword.findUnique({
-      where: { id: resolvedParams.id },
-      include: {
-        versions: {
-          orderBy: { versionNumber: "desc" },
-          take: 1,
-        },
-      },
-    });
+    const { id } = await params;
+    const keyword = await getKeyword(id);
+    const versions = await getVersions(id);
 
-    if (!keyword) {
-      return NextResponse.json({ error: "Keyword not found" }, { status: 404 });
-    }
+    const nextVersionNumber = (versions[0]?.version_number || 0) + 1;
 
-    // Calculate next version number
-    const nextVersionNumber =
-      (keyword.versions[0]?.versionNumber || 0) + 1;
-
-    const urlsToAnalyze: Array<{
-      country: string;
-      position: number;
-      url: string;
-      keywords: string;
-      classification: string;
-      observation: string;
-      alert: boolean;
-    }> = [];
-
+    const urlsToAnalyze: any[] = [];
     let commercialCount = 0;
 
-    // Fetch SERP and classify for each country
     for (const country of COUNTRIES) {
       const serpResults = await fetchSerpResults(keyword.name, country);
 
       for (const result of serpResults) {
-        // Fetch detailed metadata from URL
         let pageMetadata: PageMetadata | null = null;
         try {
           pageMetadata = await fetchUrlContent(result.url);
@@ -54,9 +30,7 @@ export async function POST(
           console.error(`Error fetching content from ${result.url}:`, error);
         }
 
-        // Classify using Ollama with metadata
         const classificationResult = await classifyUrl(result.url, pageMetadata);
-
         const isCommercial = classificationResult.classification === "Comercial";
         if (isCommercial) commercialCount++;
 
@@ -72,24 +46,13 @@ export async function POST(
       }
     }
 
-    // Create version with analyzed URLs
-    const version = await prisma.version.create({
-      data: {
-        keywordId: keyword.id,
-        versionNumber: nextVersionNumber,
-        verdict:
-          commercialCount >= 6 ? "NO_FUNCIONA" : "FUNCIONA",
-        commercialCount,
-        urls: {
-          createMany: {
-            data: urlsToAnalyze,
-          },
-        },
-      },
-      include: {
-        urls: true,
-      },
-    });
+    const version = await createVersion(
+      id,
+      nextVersionNumber,
+      commercialCount >= 6 ? "NO_FUNCIONA" : "FUNCIONA",
+      commercialCount,
+      urlsToAnalyze
+    );
 
     return NextResponse.json(version, { status: 201 });
   } catch (error) {
