@@ -35,19 +35,17 @@ export default function KeywordForm({ onKeywordAdded }: KeywordFormProps) {
     setLoading(true);
 
     try {
-      for (const keyword of keywords) {
-        const response = await fetch("/api/keywords", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: keyword }),
-        });
+      const response = await fetch("/api/keywords", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keywords }),
+      });
 
-        if (!response.ok) {
-          const data = await response.json();
-          setError(data.error || "Error al crear keyword");
-          setLoading(false);
-          return;
-        }
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.error || "Error al crear keywords");
+        setLoading(false);
+        return;
       }
 
       setSuccess(`${keywords.length} keyword(s) añadida(s) correctamente`);
