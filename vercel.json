@@ -1,4 +1,3 @@
 {
-  "buildCommand": "npm ci && next build",
   "framework": "nextjs"
 }
