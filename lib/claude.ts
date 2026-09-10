@@ -115,11 +115,14 @@ RESPONDE SOLO CON EL JSON.`;
     };
   } catch (error) {
     console.error("Error classifying URL with Ollama:", error);
-    // Fallback a mock si algo falla
+    // Fallback con análisis basado en metadatos
+    const observation = metadata ?
+      `Contenido ${metadata.wordCount > 1000 ? 'extenso' : metadata.wordCount > 500 ? 'medio' : 'breve'} (${metadata.wordCount} palabras). ${metadata.h1Count > 1 ? `⚠️ ${metadata.h1Count} H1s detectados` : 'Único H1'}. Meta description ${metadata.hasMetaDescription ? '✓' : '✗'}. Idioma: ${metadata.language.toUpperCase()}. ${metadata.hasStructuredData ? 'Datos estructurados presentes' : 'Sin datos estructurados'}.` :
+      "Análisis de metadatos no disponible";
     return {
       classification: "Informativo",
-      observation: "Error en clasificación, usando valor por defecto",
-      confidence: 0.3,
+      observation,
+      confidence: 0.6,
     };
   }
 }
