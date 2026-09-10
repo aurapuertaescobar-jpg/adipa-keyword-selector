@@ -65,7 +65,7 @@ export default function KeywordList({
 
       <div className="divide-y divide-gray-200">
         {keywords.map((keyword) => {
-          const latestVersion = keyword.versions[0];
+          const latestVersion = keyword.versions && Array.isArray(keyword.versions) && keyword.versions.length > 0 ? keyword.versions[0] : null;
           const verdict = latestVersion
             ? latestVersion.verdict === "FUNCIONA"
               ? "✓ Sirve"
@@ -90,7 +90,7 @@ export default function KeywordList({
                     {keyword.name}
                   </h3>
                   <p className="text-sm text-gray-500 mt-1">
-                    Versiones: {keyword.versions.length}
+                    Versiones: {keyword.versions && Array.isArray(keyword.versions) ? keyword.versions.length : 0}
                   </p>
                 </div>
                 <div className={`font-semibold text-sm ${verdictColor}`}>
