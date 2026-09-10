@@ -8,17 +8,17 @@ export async function GET(
   try {
     const { id } = await params;
     const keyword = await getKeyword(id);
-    const versions: any[] = await getVersions(id);
+    const versions: Array<any> = await getVersions(id);
 
     const versionsWithUrls = await Promise.all(
-      versions.map(async (version: any) => ({
-        ...version,
-        urls: await getAnalyzedUrls(version.id),
+      (versions || []).map(async (v: any) => ({
+        ...v,
+        urls: await getAnalyzedUrls(v.id),
       }))
     );
 
     let verdict = "PENDIENTE";
-    if (versionsWithUrls[0]) {
+    if (versionsWithUrls?.[0]) {
       verdict = versionsWithUrls[0].verdict || "PENDIENTE";
     }
 
