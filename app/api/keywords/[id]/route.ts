@@ -1,54 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getKeyword, getVersions, getAnalyzedUrls, deleteKeyword } from "@/lib/db";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const keyword = await getKeyword(id);
-    const versions: Array<any> = await getVersions(id);
-
-    const versionsWithUrls = await Promise.all(
-      (versions || []).map(async (v: any) => ({
-        ...v,
-        urls: await getAnalyzedUrls(v.id),
-      }))
-    );
-
-    let verdict = "PENDIENTE";
-    if (versionsWithUrls?.[0]) {
-      verdict = versionsWithUrls[0].verdict || "PENDIENTE";
+    const kw = await getKeyword(id);
+    const versionList = await getVersions(id);
+    const final: any[] = [];
+    
+    for (const v of versionList || []) {
+      const urls = await getAnalyzedUrls(v.id);
+      final.push({ ...v, urls });
     }
 
-    return NextResponse.json({
-      ...keyword,
-      versions: versionsWithUrls,
-      latestVerdict: verdict,
-    });
-  } catch (error) {
-    console.error("Error fetching keyword:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch keyword", details: String(error) },
-      { status: 500 }
-    );
+    return NextResponse.json({ ...kw, versions: final, latestVerdict: final[0]?.verdict || "PENDIENTE" });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     await deleteKeyword(id);
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error deleting keyword:", error);
-    return NextResponse.json(
-      { error: "Failed to delete keyword" },
-      { status: 500 }
-    );
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
