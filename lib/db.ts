@@ -1,80 +1,72 @@
-let supabaseClient: any = null;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 
-async function getSupabase() {
-  if (supabaseClient) return supabaseClient;
-  
-  const { createClient } = await import('@supabase/supabase-js');
-  
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const supabaseKey = process.env.SUPABASE_SERVICE_KEY || '';
-  
-  supabaseClient = createClient(supabaseUrl, supabaseKey);
-  return supabaseClient;
-}
+const headers = {
+  'Content-Type': 'application/json',
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+};
 
 export async function getKeywords() {
-  const supabase = await getSupabase();
-  const { data, error } = await supabase.from('keyword').select('*');
-  if (error) throw error;
-  return data;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/keyword`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch keywords');
+  return res.json();
 }
 
 export async function getKeyword(id: string) {
-  const supabase = await getSupabase();
-  const { data, error } = await supabase.from('keyword').select('*').eq('id', id).single();
-  if (error) throw error;
-  return data;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/keyword?id=eq.${id}`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch keyword');
+  const data = await res.json();
+  return data[0];
 }
 
 export async function createKeyword(name: string) {
-  const supabase = await getSupabase();
-  const { data, error } = await supabase.from('keyword').insert({ name }).select().single();
-  if (error) throw error;
-  return data;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/keyword`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) throw new Error('Failed to create keyword');
+  const data = await res.json();
+  return data[0];
 }
 
 export async function deleteKeyword(id: string) {
-  const supabase = await getSupabase();
-  const { error } = await supabase.from('keyword').delete().eq('id', id);
-  if (error) throw error;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/keyword?id=eq.${id}`, {
+    method: 'DELETE',
+    headers,
+  });
+  if (!res.ok) throw new Error('Failed to delete keyword');
 }
 
 export async function getVersions(keywordId: string) {
-  const supabase = await getSupabase();
-  const { data, error } = await supabase
-    .from('version')
-    .select('*')
-    .eq('keyword_id', keywordId)
-    .order('version_number', { ascending: false });
-  if (error) throw error;
-  return data;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/version?keyword_id=eq.${keywordId}&order=version_number.desc`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch versions');
+  return res.json();
 }
 
 export async function getAnalyzedUrls(versionId: string) {
-  const supabase = await getSupabase();
-  const { data, error } = await supabase
-    .from('analyzed_url')
-    .select('*')
-    .eq('version_id', versionId)
-    .order('position', { ascending: true });
-  if (error) throw error;
-  return data;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/analyzed_url?version_id=eq.${versionId}&order=position.asc`, { headers });
+  if (!res.ok) throw new Error('Failed to fetch analyzed URLs');
+  return res.json();
 }
 
 export async function createVersion(keywordId: string, versionNumber: number, verdict: string, commercialCount: number, urls: any[]) {
-  const supabase = await getSupabase();
-  const { data: version, error: versionError } = await supabase
-    .from('version')
-    .insert({ keyword_id: keywordId, version_number: versionNumber, verdict, commercial_count: commercialCount })
-    .select()
-    .single();
-  
-  if (versionError) throw versionError;
+  const versionRes = await fetch(`${SUPABASE_URL}/rest/v1/version`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ keyword_id: keywordId, version_number: versionNumber, verdict, commercial_count: commercialCount }),
+  });
+  if (!versionRes.ok) throw new Error('Failed to create version');
+  const version = (await versionRes.json())[0];
 
   const urlsWithVersionId = urls.map(url => ({ ...url, version_id: version.id }));
-  const { error: urlsError } = await supabase.from('analyzed_url').insert(urlsWithVersionId);
-  
-  if (urlsError) throw urlsError;
-  
+  const urlsRes = await fetch(`${SUPABASE_URL}/rest/v1/analyzed_url`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(urlsWithVersionId),
+  });
+  if (!urlsRes.ok) throw new Error('Failed to create analyzed URLs');
+
   return version;
 }
