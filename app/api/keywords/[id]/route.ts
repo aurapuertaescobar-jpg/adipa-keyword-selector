@@ -8,7 +8,7 @@ export async function GET(
   try {
     const { id } = await params;
     const keyword = await getKeyword(id);
-    const versions = await getVersions(id);
+    const versions: any[] = await getVersions(id);
 
     const versionsWithUrls = await Promise.all(
       versions.map(async (version: any) => ({
