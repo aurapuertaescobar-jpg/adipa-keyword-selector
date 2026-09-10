@@ -17,7 +17,7 @@ export async function getKeyword(id: string) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/keyword?id=eq.${id}`, { headers });
   if (!res.ok) throw new Error('Failed to fetch keyword');
   const data = await res.json();
-  return data[0];
+  return Array.isArray(data) && data.length > 0 ? data[0] : null;
 }
 
 export async function createKeyword(name: string) {
@@ -28,7 +28,7 @@ export async function createKeyword(name: string) {
   });
   if (!res.ok) throw new Error('Failed to create keyword');
   const data = await res.json();
-  return data[0];
+  return Array.isArray(data) && data.length > 0 ? data[0] : null;
 }
 
 export async function deleteKeyword(id: string) {
@@ -58,7 +58,9 @@ export async function createVersion(keywordId: string, versionNumber: number, ve
     body: JSON.stringify({ keyword_id: keywordId, version_number: versionNumber, verdict, commercial_count: commercialCount }),
   });
   if (!versionRes.ok) throw new Error('Failed to create version');
-  const version = (await versionRes.json())[0];
+  const versionData = await versionRes.json();
+  const version = Array.isArray(versionData) && versionData.length > 0 ? versionData[0] : null;
+  if (!version) throw new Error('Failed to create version: no data returned');
 
   const urlsWithVersionId = urls.map(url => ({ ...url, version_id: version.id }));
   const urlsRes = await fetch(`${SUPABASE_URL}/rest/v1/analyzed_url`, {
