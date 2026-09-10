@@ -11,7 +11,7 @@ export async function GET(
     const versions = await getVersions(id);
 
     const versionsWithUrls = await Promise.all(
-      versions.map(async (version) => ({
+      versions.map(async (version: any) => ({
         ...version,
         urls: await getAnalyzedUrls(version.id),
       }))
